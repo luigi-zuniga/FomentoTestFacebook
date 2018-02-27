@@ -7,6 +7,7 @@ using Microsoft.AspNet.Identity;
 using Microsoft.AspNet.Identity.Owin;
 using Microsoft.Owin.Security;
 using FL_App.Models;
+using FacebookApp.Controllers;
 
 namespace FL_App.Controllers
 {

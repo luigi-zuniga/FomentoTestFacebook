@@ -8,6 +8,7 @@ namespace FL_App.Models
         [Required]
         [Display(Name = "Correo electrónico")]
         public string Email { get; set; }
+        public dynamic Name { get; internal set; }
     }
 
     public class ExternalLoginListViewModel

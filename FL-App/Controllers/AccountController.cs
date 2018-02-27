@@ -9,8 +9,12 @@ using Microsoft.AspNet.Identity;
 using Microsoft.AspNet.Identity.Owin;
 using Microsoft.Owin.Security;
 using FL_App.Models;
+using Facebook;//Agregado
+using System.Collections.Generic;
+using FL_App;
+using FL_App.Controllers;
 
-namespace FL_App.Controllers
+namespace FacebookApp.Controllers
 {
     [Authorize]
     public class AccountController : Controller
@@ -22,7 +26,7 @@ namespace FL_App.Controllers
         {
         }
 
-        public AccountController(ApplicationUserManager userManager, ApplicationSignInManager signInManager )
+        public AccountController(ApplicationUserManager userManager, ApplicationSignInManager signInManager)
         {
             UserManager = userManager;
             SignInManager = signInManager;
@@ -34,9 +38,9 @@ namespace FL_App.Controllers
             {
                 return _signInManager ?? HttpContext.GetOwinContext().Get<ApplicationSignInManager>();
             }
-            private set 
-            { 
-                _signInManager = value; 
+            private set
+            {
+                _signInManager = value;
             }
         }
 
@@ -73,8 +77,8 @@ namespace FL_App.Controllers
                 return View(model);
             }
 
-            // No cuenta los errores de inicio de sesión para el bloqueo de la cuenta
-            // Para permitir que los errores de contraseña desencadenen el bloqueo de la cuenta, cambie a shouldLockout: true
+            // This doesn't count login failures towards account lockout
+            // To enable password failures to trigger account lockout, change to shouldLockout: true
             var result = await SignInManager.PasswordSignInAsync(model.Email, model.Password, model.RememberMe, shouldLockout: false);
             switch (result)
             {
@@ -86,7 +90,7 @@ namespace FL_App.Controllers
                     return RedirectToAction("SendCode", new { ReturnUrl = returnUrl, RememberMe = model.RememberMe });
                 case SignInStatus.Failure:
                 default:
-                    ModelState.AddModelError("", "Intento de inicio de sesión no válido.");
+                    ModelState.AddModelError("", "Invalid login attempt.");
                     return View(model);
             }
         }
@@ -96,7 +100,7 @@ namespace FL_App.Controllers
         [AllowAnonymous]
         public async Task<ActionResult> VerifyCode(string provider, string returnUrl, bool rememberMe)
         {
-            // Requerir que el usuario haya iniciado sesión con nombre de usuario y contraseña o inicio de sesión externo
+            // Require that the user has already logged in via username/password or external login
             if (!await SignInManager.HasBeenVerifiedAsync())
             {
                 return View("Error");
@@ -116,11 +120,11 @@ namespace FL_App.Controllers
                 return View(model);
             }
 
-            // El código siguiente protege de los ataques por fuerza bruta a los códigos de dos factores. 
-            // Si un usuario introduce códigos incorrectos durante un intervalo especificado de tiempo, la cuenta del usuario 
-            // se bloqueará durante un período de tiempo especificado. 
-            // Puede configurar el bloqueo de la cuenta en IdentityConfig
-            var result = await SignInManager.TwoFactorSignInAsync(model.Provider, model.Code, isPersistent:  model.RememberMe, rememberBrowser: model.RememberBrowser);
+            // The following code protects for brute force attacks against the two factor codes. 
+            // If a user enters incorrect codes for a specified amount of time then the user account 
+            // will be locked out for a specified amount of time. 
+            // You can configure the account lockout settings in IdentityConfig
+            var result = await SignInManager.TwoFactorSignInAsync(model.Provider, model.Code, isPersistent: model.RememberMe, rememberBrowser: model.RememberBrowser);
             switch (result)
             {
                 case SignInStatus.Success:
@@ -129,7 +133,7 @@ namespace FL_App.Controllers
                     return View("Lockout");
                 case SignInStatus.Failure:
                 default:
-                    ModelState.AddModelError("", "Código no válido.");
+                    ModelState.AddModelError("", "Invalid code.");
                     return View(model);
             }
         }
@@ -155,20 +159,20 @@ namespace FL_App.Controllers
                 var result = await UserManager.CreateAsync(user, model.Password);
                 if (result.Succeeded)
                 {
-                    await SignInManager.SignInAsync(user, isPersistent:false, rememberBrowser:false);
-                    
-                    // Para obtener más información sobre cómo habilitar la confirmación de cuenta y el restablecimiento de contraseña, visite http://go.microsoft.com/fwlink/?LinkID=320771
-                    // Enviar correo electrónico con este vínculo
+                    await SignInManager.SignInAsync(user, isPersistent: false, rememberBrowser: false);
+
+                    // For more information on how to enable account confirmation and password reset please visit http://go.microsoft.com/fwlink/?LinkID=320771
+                    // Send an email with this link
                     // string code = await UserManager.GenerateEmailConfirmationTokenAsync(user.Id);
                     // var callbackUrl = Url.Action("ConfirmEmail", "Account", new { userId = user.Id, code = code }, protocol: Request.Url.Scheme);
-                    // await UserManager.SendEmailAsync(user.Id, "Confirmar cuenta", "Para confirmar la cuenta, haga clic <a href=\"" + callbackUrl + "\">aquí</a>");
+                    // await UserManager.SendEmailAsync(user.Id, "Confirm your account", "Please confirm your account by clicking <a href=\"" + callbackUrl + "\">here</a>");
 
                     return RedirectToAction("Index", "Home");
                 }
                 AddErrors(result);
             }
 
-            // Si llegamos a este punto, es que se ha producido un error y volvemos a mostrar el formulario
+            // If we got this far, something failed, redisplay form
             return View(model);
         }
 
@@ -205,19 +209,19 @@ namespace FL_App.Controllers
                 var user = await UserManager.FindByNameAsync(model.Email);
                 if (user == null || !(await UserManager.IsEmailConfirmedAsync(user.Id)))
                 {
-                    // No revelar que el usuario no existe o que no está confirmado
+                    // Don't reveal that the user does not exist or is not confirmed
                     return View("ForgotPasswordConfirmation");
                 }
 
-                // Para obtener más información sobre cómo habilitar la confirmación de cuenta y el restablecimiento de contraseña, visite http://go.microsoft.com/fwlink/?LinkID=320771
-                // Enviar correo electrónico con este vínculo
+                // For more information on how to enable account confirmation and password reset please visit http://go.microsoft.com/fwlink/?LinkID=320771
+                // Send an email with this link
                 // string code = await UserManager.GeneratePasswordResetTokenAsync(user.Id);
                 // var callbackUrl = Url.Action("ResetPassword", "Account", new { userId = user.Id, code = code }, protocol: Request.Url.Scheme);		
-                // await UserManager.SendEmailAsync(user.Id, "Restablecer contraseña", "Para restablecer la contraseña, haga clic <a href=\"" + callbackUrl + "\">aquí</a>");
+                // await UserManager.SendEmailAsync(user.Id, "Reset Password", "Please reset your password by clicking <a href=\"" + callbackUrl + "\">here</a>");
                 // return RedirectToAction("ForgotPasswordConfirmation", "Account");
             }
 
-            // Si llegamos a este punto, es que se ha producido un error y volvemos a mostrar el formulario
+            // If we got this far, something failed, redisplay form
             return View(model);
         }
 
@@ -251,7 +255,7 @@ namespace FL_App.Controllers
             var user = await UserManager.FindByNameAsync(model.Email);
             if (user == null)
             {
-                // No revelar que el usuario no existe
+                // Don't reveal that the user does not exist
                 return RedirectToAction("ResetPasswordConfirmation", "Account");
             }
             var result = await UserManager.ResetPasswordAsync(user.Id, model.Code, model.Password);
@@ -278,7 +282,7 @@ namespace FL_App.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult ExternalLogin(string provider, string returnUrl)
         {
-            // Solicitar redireccionamiento al proveedor de inicio de sesión externo
+            // Request a redirect to the external login provider
             return new ChallengeResult(provider, Url.Action("ExternalLoginCallback", "Account", new { ReturnUrl = returnUrl }));
         }
 
@@ -309,7 +313,7 @@ namespace FL_App.Controllers
                 return View();
             }
 
-            // Generar el token y enviarlo
+            // Generate the token and send it
             if (!await SignInManager.SendTwoFactorCodeAsync(model.SelectedProvider))
             {
                 return View("Error");
@@ -323,12 +327,13 @@ namespace FL_App.Controllers
         public async Task<ActionResult> ExternalLoginCallback(string returnUrl)
         {
             var loginInfo = await AuthenticationManager.GetExternalLoginInfoAsync();
+
             if (loginInfo == null)
             {
                 return RedirectToAction("Login");
             }
 
-            // Si el usuario ya tiene un inicio de sesión, iniciar sesión del usuario con este proveedor de inicio de sesión externo
+            // Sign in the user with this external login provider if the user already has a login
             var result = await SignInManager.ExternalSignInAsync(loginInfo, isPersistent: false);
             switch (result)
             {
@@ -340,10 +345,17 @@ namespace FL_App.Controllers
                     return RedirectToAction("SendCode", new { ReturnUrl = returnUrl, RememberMe = false });
                 case SignInStatus.Failure:
                 default:
-                    // Si el usuario no tiene ninguna cuenta, solicitar que cree una
+                    // If the user does not have an account, then prompt the user to create an account
                     ViewBag.ReturnUrl = returnUrl;
                     ViewBag.LoginProvider = loginInfo.Login.LoginProvider;
-                    return View("ExternalLoginConfirmation", new ExternalLoginConfirmationViewModel { Email = loginInfo.Email });
+
+                    //Obtenemos el email de facebook
+                    //Agregado
+                    var fb = new FacebookClient(loginInfo.ExternalIdentity.Claims.FirstOrDefault(x => x.Type == "FacebookAccessToken").Value);
+                    dynamic userFbData = fb.Get("me");
+
+                    //return View("ExternalLoginConfirmation", new ExternalLoginConfirmationViewModel { Name=userFbData.name, Email = loginInfo.Email });
+                    return View("ExternalLoginConfirmation", new ExternalLoginConfirmationViewModel { Name = userFbData.name, Email = userFbData.email });
             }
         }
 
@@ -361,7 +373,7 @@ namespace FL_App.Controllers
 
             if (ModelState.IsValid)
             {
-                // Obtener datos del usuario del proveedor de inicio de sesión externo
+                // Get the information about the user from the external login provider
                 var info = await AuthenticationManager.GetExternalLoginInfoAsync();
                 if (info == null)
                 {
@@ -375,6 +387,7 @@ namespace FL_App.Controllers
                     if (result.Succeeded)
                     {
                         await SignInManager.SignInAsync(user, isPersistent: false, rememberBrowser: false);
+                        await StoreFacebookAuthToken(user);//Agregado
                         return RedirectToLocal(returnUrl);
                     }
                 }
@@ -385,13 +398,15 @@ namespace FL_App.Controllers
             return View(model);
         }
 
-        //
+
+
+  
         // POST: /Account/LogOff
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult LogOff()
         {
-            AuthenticationManager.SignOut(DefaultAuthenticationTypes.ApplicationCookie);
+            AuthenticationManager.SignOut();
             return RedirectToAction("Index", "Home");
         }
 
@@ -401,6 +416,48 @@ namespace FL_App.Controllers
         public ActionResult ExternalLoginFailure()
         {
             return View();
+        }
+
+        //Agregado
+        [HttpGet]
+        [Authorize]
+        public async Task<ActionResult> FacebookFriends()
+        {
+            var claimsforUser = await UserManager.GetClaimsAsync(User.Identity.GetUserId());
+            var access_token = claimsforUser.FirstOrDefault(x => x.Type == "FacebookAccessToken").Value;
+            var fb = new FacebookClient(access_token);
+            //dynamic fbFriends = fb.Get("/me/taggable_friends");
+            dynamic fbFriends = fb.Get("/me/friends");
+            var userFriends = new List<FacebookFriendsViewModel>();
+            foreach (var friendsItem in fbFriends.data)
+            {
+                userFriends.Add(new FacebookFriendsViewModel()
+                {
+                    Name = friendsItem.name,
+                    ImageUrl = String.Format("https://graph.facebook.com/{0}/picture?type=small", friendsItem.id)
+                });
+            }
+            return View(userFriends);
+        }
+
+        //Agregado
+        [HttpGet]
+        [Authorize]
+        public ActionResult FacebookPost()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        [Authorize]
+        public async Task<ActionResult> FacebookPost(string txtMessage)
+        {
+            var claimsforUser = await UserManager.GetClaimsAsync(User.Identity.GetUserId());
+            var access_token = claimsforUser.FirstOrDefault(x => x.Type == "FacebookAccessToken").Value;
+            var fb = new FacebookClient(access_token);
+            dynamic result = fb.Post("feed", new { message = txtMessage });
+
+            return RedirectToAction("Index", "Home");
         }
 
         protected override void Dispose(bool disposing)
@@ -423,8 +480,24 @@ namespace FL_App.Controllers
             base.Dispose(disposing);
         }
 
-        #region Aplicaciones auxiliares
-        // Se usa para la protección XSRF al agregar inicios de sesión externos
+        //Agregado
+        private async Task StoreFacebookAuthToken(ApplicationUser user)
+        {
+            var claimsIdentity = await AuthenticationManager.GetExternalIdentityAsync(DefaultAuthenticationTypes.ExternalCookie);
+            if (claimsIdentity != null)
+            {
+                // Retrieve the existing claims for the user and add the FacebookAccessTokenClaim
+                var currentClaims = await UserManager.GetClaimsAsync(user.Id);
+                var facebookAccessToken = claimsIdentity.FindAll("FacebookAccessToken").First();
+                if (currentClaims.Count() <= 0)
+                {
+                    await UserManager.AddClaimAsync(user.Id, facebookAccessToken);
+                }
+            }
+        }
+
+        #region Helpers
+        // Used for XSRF protection when adding external logins
         private const string XsrfKey = "XsrfId";
 
         private IAuthenticationManager AuthenticationManager
@@ -483,3 +556,4 @@ namespace FL_App.Controllers
         #endregion
     }
 }
+

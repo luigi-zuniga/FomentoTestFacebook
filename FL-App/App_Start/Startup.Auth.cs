@@ -3,10 +3,8 @@ using Microsoft.AspNet.Identity;
 using Microsoft.AspNet.Identity.Owin;
 using Microsoft.Owin;
 using Microsoft.Owin.Security.Cookies;
-using Microsoft.Owin.Security.Google;
 using Owin;
 using FL_App.Models;
-using FL_App.Facebook;
 using Microsoft.Owin.Security.Facebook;
 
 namespace FL_App
@@ -56,9 +54,27 @@ namespace FL_App
             //   consumerKey: "",
             //   consumerSecret: "");
 
-            app.UseFacebookAuthentication(
-               appId: "161575724648661",
-               appSecret: "ba72adcd15002631e670d0be08e5be15");
+            var fbAuthOpts = new FacebookAuthenticationOptions();
+            fbAuthOpts.Scope.Add("email");
+            fbAuthOpts.Scope.Add("user_friends");
+            fbAuthOpts.Scope.Add("user_likes");
+            fbAuthOpts.Scope.Add("publish_actions");
+
+            fbAuthOpts.AppId = "...";
+            fbAuthOpts.AppSecret = "...";
+            fbAuthOpts.Provider = new FacebookAuthenticationProvider()
+            {
+                OnAuthenticated = async context =>
+                {
+                    context.Identity.AddClaim(new System.Security.Claims.Claim("FacebookAccessToken", context.AccessToken));
+                }
+            };
+
+            app.UseFacebookAuthentication(fbAuthOpts);
+
+            //app.UseFacebookAuthentication(
+            //   appId: "161575724648661",
+            //   appSecret: "ba72adcd15002631e670d0be08e5be15");
 
             //var facebookOptions = new FacebookAuthenticationOptions()
             //{
