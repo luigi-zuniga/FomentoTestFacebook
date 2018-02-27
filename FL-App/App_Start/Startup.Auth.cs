@@ -73,13 +73,13 @@ namespace FL_App
             app.UseFacebookAuthentication(fbAuthOpts);
 
             //app.UseFacebookAuthentication(
-            //   appId: "161575724648661",
-            //   appSecret: "ba72adcd15002631e670d0be08e5be15");
+            //   appId: "...",
+            //   appSecret: "...");
 
             //var facebookOptions = new FacebookAuthenticationOptions()
             //{
-            //    AppId = "416370942144709",
-            //    AppSecret = "370856f9d3fb1e7f83404ac987bab56a",
+            //    AppId = "...",
+            //    AppSecret = "...",
             //    BackchannelHttpHandler = new FacebookBackChannelHandler(),
             //    UserInformationEndpoint = "https://graph.facebook.com/v2.12me?fields=id"
             //};
